@@ -93,3 +93,8 @@ func (socket *Socket) SubscribeOnClientEvents(client *Client) {
 		}
 	}
 }
+
+// TODO: id киента который не должен получить свое сообщение обратно должен быть указан в EventData.ClientID
+func (socket *Socket) WriteToAllConnectedClients(data broker.EventData){
+
+}
