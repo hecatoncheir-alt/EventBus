@@ -59,21 +59,24 @@ func (socket *Socket) Listen() {
 	}
 }
 
+func (socket *Socket) RemoveConnectedClient(client *Client) {
+	var index int
+
+	for i, connectedClient := range socket.ConnectedClients {
+		if connectedClient.ID == client.ID {
+			index = i
+			break
+		}
+	}
+
+	clients := socket.ConnectedClients
+	socket.ConnectedClients = append(clients[:index], clients[index+1:]...)
+}
+
 func (socket *Socket) SubscribeOnClientEvents(client *Client) {
 	for event := range client.InputChannel {
 		if event.Message == "Connection closed" {
-			var index int
-
-			for i,connectedClient := range socket.ConnectedClients{
-				if connectedClient.ID == client.ID {
-					index = i
-					break
-				}
-			}
-
-			clients := socket.ConnectedClients
-			socket.ConnectedClients = append(clients[:index], clients[index+1:]...)
-
+			socket.RemoveConnectedClient(client)
 			break
 		}
 
