@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"io"
 )
 
 type Client struct {
@@ -44,7 +45,7 @@ func NewClient(connection net.Conn) *Client {
 	return &client
 }
 
-func (client *Client) SubscribeOnEvents(connection net.Conn) {
+func (client *Client) SubscribeOnEvents(connection io.ReadCloser) {
 	request := make([]byte, 1024)
 
 	defer connection.Close()
@@ -54,6 +55,7 @@ func (client *Client) SubscribeOnEvents(connection net.Conn) {
 
 		if err != nil || lengthOfBytes == 0 {
 			client.InputChannel <- broker.EventData{Message: "Connection closed"}
+			client.Log.Printf("disconnected")
 			break // connection already closed by client
 		}
 
