@@ -55,7 +55,7 @@ func (socket *Socket) Listen() {
 
 		println(fmt.Sprintf("Client: %v connected. Connected clients: %v", client.ID, len(socket.ConnectedClients)))
 
-		socket.SubscribeOnClientEvents(client)
+		go socket.SubscribeOnClientEvents(client)
 	}
 }
 
@@ -74,30 +74,28 @@ func (socket *Socket) RemoveConnectedClient(client *Client) {
 }
 
 func (socket *Socket) SubscribeOnClientEvents(client *Client) {
-	go func() {
-		for event := range client.InputChannel {
-			if event.Message == "Connection closed" {
-				socket.RemoveConnectedClient(client)
-				break
-			}
+	for event := range client.InputChannel {
+		if event.Message == "Connection closed" {
+			socket.RemoveConnectedClient(client)
+			break
+		}
 
-			if event.Message == "Need APIVersion" {
-				eventData := map[string]string{"APIVersion": socket.APIVersion}
-				bytes, err := json.Marshal(eventData)
-				if err != nil {
-					println(fmt.Sprintf("Error marshal event data: %v for client: %v",
-						eventData, client.ID))
-					continue
-				}
-
-				client.Write(broker.EventData{Message: "APIVersion ready", Data: string(bytes)})
-
+		if event.Message == "Need APIVersion" {
+			eventData := map[string]string{"APIVersion": socket.APIVersion}
+			bytes, err := json.Marshal(eventData)
+			if err != nil {
+				println(fmt.Sprintf("Error marshal event data: %v for client: %v",
+					eventData, client.ID))
 				continue
 			}
 
-			socket.WriteToAllConnectedClients(event)
+			client.Write(broker.EventData{Message: "APIVersion ready", Data: string(bytes)})
+
+			continue
 		}
-	}()
+
+		socket.WriteToAllConnectedClients(event)
+	}
 }
 
 func (socket *Socket) WriteToAllConnectedClients(data broker.EventData) {
