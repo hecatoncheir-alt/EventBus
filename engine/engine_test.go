@@ -118,3 +118,75 @@ func TestSocket_SubscribeOnClientEvents(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestSocket_WriteToAllConnectedClients(t *testing.T) {
+	config := configuration.New()
+	engine := New(config.APIVersion)
+
+	err := engine.SetUp(config.Development.EventBus.Host, config.Development.EventBus.Port)
+	if err != nil {
+		t.Error(err)
+	}
+
+	go engine.Listen()
+
+	address := fmt.Sprintf("%v:%v", config.Development.EventBus.Host, config.Development.EventBus.Port)
+	tcpAddr, err := net.ResolveTCPAddr("tcp4", address)
+	if err != nil {
+		t.Error(err)
+	}
+
+	firstClientConnection, err := net.DialTCP("tcp", nil, tcpAddr)
+	if err != nil {
+		t.Error(err)
+	}
+
+	connection, err := net.DialTCP("tcp", nil, tcpAddr)
+	if err != nil {
+		t.Error(err)
+	}
+
+	event := broker.EventData{Message: "Test message for other connected client"}
+	encodedEvent, err := json.Marshal(event)
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = connection.Write(encodedEvent)
+	if err != nil {
+		t.Error(err)
+	}
+
+	request := make([]byte, 1024)
+
+	for {
+		length, err := firstClientConnection.Read(request)
+		if err != nil {
+			t.Error(err)
+			break
+		}
+
+		if length == 0 {
+			t.Error(err)
+			break
+		}
+
+		decodedEvent := broker.EventData{}
+
+		err = json.Unmarshal(request[:length], &decodedEvent)
+		if err != nil {
+			t.Error(err)
+			break
+		}
+
+		if decodedEvent.Message != "Test message for other connected client" {
+			t.Fail()
+			break
+		}
+
+		break
+	}
+
+	connection.Close()
+	firstClientConnection.Close()
+}

@@ -36,7 +36,7 @@ func NewClient(connection net.Conn) *Client {
 }
 
 func (client *Client) SubscribeOnEvents() {
-	request := make([]byte, 128)
+	request := make([]byte, 1024)
 
 	defer client.Connection.Close()
 
@@ -58,7 +58,6 @@ func (client *Client) SubscribeOnEvents() {
 		event.ClientID = client.ID
 
 		client.InputChannel <- event
-
 	}
 }
 

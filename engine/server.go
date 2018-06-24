@@ -74,27 +74,36 @@ func (socket *Socket) RemoveConnectedClient(client *Client) {
 }
 
 func (socket *Socket) SubscribeOnClientEvents(client *Client) {
-	for event := range client.InputChannel {
-		if event.Message == "Connection closed" {
-			socket.RemoveConnectedClient(client)
-			break
-		}
+	go func() {
+		for event := range client.InputChannel {
+			if event.Message == "Connection closed" {
+				socket.RemoveConnectedClient(client)
+				break
+			}
 
-		if event.Message == "Need APIVersion" {
-			eventData := map[string]string{"APIVersion": socket.APIVersion}
-			bytes, err := json.Marshal(eventData)
-			if err != nil {
-				println(fmt.Sprintf("Error marshal event data: %v for client: %v",
-					eventData, client.ID))
+			if event.Message == "Need APIVersion" {
+				eventData := map[string]string{"APIVersion": socket.APIVersion}
+				bytes, err := json.Marshal(eventData)
+				if err != nil {
+					println(fmt.Sprintf("Error marshal event data: %v for client: %v",
+						eventData, client.ID))
+					continue
+				}
+
+				client.Write(broker.EventData{Message: "APIVersion ready", Data: string(bytes)})
+
 				continue
 			}
 
-			client.Write(broker.EventData{Message: "APIVersion ready", Data: string(bytes)})
+			socket.WriteToAllConnectedClients(event)
 		}
-	}
+	}()
 }
 
-// TODO: id киента который не должен получить свое сообщение обратно должен быть указан в EventData.ClientID
-func (socket *Socket) WriteToAllConnectedClients(data broker.EventData){
-
+func (socket *Socket) WriteToAllConnectedClients(data broker.EventData) {
+	for _, client := range socket.ConnectedClients {
+		if client.ID != data.ClientID {
+			client.Write(data)
+		}
+	}
 }
