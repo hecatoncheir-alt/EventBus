@@ -40,17 +40,17 @@ func NewClient(connection net.Conn) *Client {
 	}()
 
 	//client.Connection.SetReadDeadline(time.Now().Add(2 * time.Minute))
-	go client.SubscribeOnEvents()
+	go client.SubscribeOnEvents(connection)
 	return &client
 }
 
-func (client *Client) SubscribeOnEvents() {
+func (client *Client) SubscribeOnEvents(connection net.Conn) {
 	request := make([]byte, 1024)
 
-	defer client.Connection.Close()
+	defer connection.Close()
 
 	for {
-		lengthOfBytes, err := client.Connection.Read(request)
+		lengthOfBytes, err := connection.Read(request)
 
 		if err != nil || lengthOfBytes == 0 {
 			client.InputChannel <- broker.EventData{Message: "Connection closed"}
