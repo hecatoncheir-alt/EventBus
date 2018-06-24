@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hecatoncheir/Broker"
+	"log"
 	"net"
 	"os"
 )
@@ -12,12 +13,17 @@ type Socket struct {
 	APIVersion, Host string
 	Port             int
 	TCPHost          *net.TCPAddr
+	Log              *log.Logger
 
 	ConnectedClients []*Client
 }
 
 func New(APIVersion string) *Socket {
 	engine := Socket{APIVersion: APIVersion}
+
+	logPrefix := fmt.Sprintf("Server")
+	engine.Log = log.New(os.Stdout, logPrefix, 3)
+
 	return &engine
 }
 
@@ -37,11 +43,11 @@ func (socket *Socket) SetUp(ip string, port int) error {
 func (socket *Socket) Listen() {
 	listener, err := net.ListenTCP("tcp", socket.TCPHost)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error())
+		socket.Log.Fatalf("Fatal error: %s", err.Error())
 		os.Exit(1)
 	}
 
-	println(fmt.Sprintf("Socket server listen on: %v:%v", socket.Host, socket.Port))
+	socket.Log.Printf("Socket server listen on: %v:%v", socket.Host, socket.Port)
 
 	for {
 		connection, err := listener.Accept()
@@ -53,7 +59,8 @@ func (socket *Socket) Listen() {
 
 		socket.ConnectedClients = append(socket.ConnectedClients, client)
 
-		println(fmt.Sprintf("Client: %v connected. Connected clients: %v", client.ID, len(socket.ConnectedClients)))
+		socket.Log.Printf("Client: %v connected. Connected clients: %v",
+			client.ID, len(socket.ConnectedClients))
 
 		go socket.SubscribeOnClientEvents(client)
 	}
@@ -84,8 +91,8 @@ func (socket *Socket) SubscribeOnClientEvents(client *Client) {
 			eventData := map[string]string{"APIVersion": socket.APIVersion}
 			bytes, err := json.Marshal(eventData)
 			if err != nil {
-				println(fmt.Sprintf("Error marshal event data: %v for client: %v",
-					eventData, client.ID))
+				socket.Log.Printf("Error marshal event data: %v for client: %v",
+					eventData, client.ID)
 				continue
 			}
 

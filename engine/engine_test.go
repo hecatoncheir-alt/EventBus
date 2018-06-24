@@ -7,6 +7,7 @@ import (
 	"github.com/hecatoncheir/Configuration"
 	"net"
 	"testing"
+	"time"
 )
 
 func TestSocket_SetUp(t *testing.T) {
@@ -57,6 +58,11 @@ func TestSocket_SubscribeOnClientEvents(t *testing.T) {
 		t.Error(err)
 	}
 
+	time.Sleep(time.Second * 1)
+	if len(engine.ConnectedClients) != 1 {
+		t.Fail()
+	}
+
 	event := broker.EventData{Message: "Need APIVersion"}
 	encodedEvent, err := json.Marshal(event)
 	if err != nil {
@@ -66,10 +72,6 @@ func TestSocket_SubscribeOnClientEvents(t *testing.T) {
 	_, err = connection.Write(encodedEvent)
 	if err != nil {
 		t.Error(err)
-	}
-
-	if len(engine.ConnectedClients) != 1 {
-		t.Fail()
 	}
 
 	request := make([]byte, 128)
@@ -94,7 +96,7 @@ func TestSocket_SubscribeOnClientEvents(t *testing.T) {
 			break
 		}
 
-		if decodedEvent.Message != "APIVersion ready" {
+		if decodedEvent.Message == "APIVersion ready" {
 			decodedData := map[string]string{}
 
 			err = json.Unmarshal([]byte(decodedEvent.Data), &decodedData)
@@ -107,9 +109,9 @@ func TestSocket_SubscribeOnClientEvents(t *testing.T) {
 				t.Error(err)
 				break
 			}
-		}
 
-		break
+			break
+		}
 	}
 
 	connection.Close()
@@ -179,12 +181,14 @@ func TestSocket_WriteToAllConnectedClients(t *testing.T) {
 			break
 		}
 
+		if decodedEvent.Message == "Test message for other connected client" {
+			break
+		}
+
 		if decodedEvent.Message != "Test message for other connected client" {
 			t.Fail()
 			break
 		}
-
-		break
 	}
 
 	connection.Close()

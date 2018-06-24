@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/hecatoncheir/Broker"
+	"log"
 	"net"
+	"os"
 )
 
 type Client struct {
@@ -13,6 +15,7 @@ type Client struct {
 	Connection    net.Conn
 	InputChannel  chan broker.EventData
 	OutputChannel chan broker.EventData
+	Log           *log.Logger
 }
 
 func NewClient(connection net.Conn) *Client {
@@ -24,9 +27,15 @@ func NewClient(connection net.Conn) *Client {
 		InputChannel:  make(chan broker.EventData),
 		OutputChannel: make(chan broker.EventData)}
 
+	logPrefix := fmt.Sprintf("Client: %v", client.ID)
+	client.Log = log.New(os.Stdout, logPrefix, 3)
+
 	go func() {
-		for output := range client.OutputChannel {
-			client.write(output)
+		for outputEvent := range client.OutputChannel {
+			err := client.write(outputEvent)
+			if err != nil {
+				client.Log.Printf("Error write event: %v to client", outputEvent)
+			}
 		}
 	}()
 
@@ -51,7 +60,7 @@ func (client *Client) SubscribeOnEvents() {
 		event := broker.EventData{}
 		err = json.Unmarshal(request[:lengthOfBytes], &event)
 		if err != nil {
-			println(fmt.Sprintf("Error by unmarshal event: %v", request[:lengthOfBytes]))
+			client.Log.Printf("Error by unmarshal event: %v", request[:lengthOfBytes])
 			continue
 		}
 
