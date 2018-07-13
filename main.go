@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/hecatoncheir/Configuration"
 	"github.com/hecatoncheir/EventBus/engine"
-	"os"
 )
 
 func main() {
